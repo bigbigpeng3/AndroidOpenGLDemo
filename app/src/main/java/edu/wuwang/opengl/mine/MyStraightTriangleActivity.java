@@ -74,6 +74,14 @@ public class MyStraightTriangleActivity extends AppCompatActivity {
         GLES20.glAttachShader(mProgram, fragmentShader);
         //连接到着色器程序
         GLES20.glLinkProgram(mProgram);
+
+
+        ByteBuffer dd = ByteBuffer.allocateDirect(
+                color.length * 4);
+        dd.order(ByteOrder.nativeOrder());
+        colorBuffer = dd.asFloatBuffer();
+        colorBuffer.put(color);
+        colorBuffer.position(0);
     }
 
 
@@ -87,17 +95,22 @@ public class MyStraightTriangleActivity extends AppCompatActivity {
     }
 
 
-    private FloatBuffer vertexBuffer;
+    private FloatBuffer vertexBuffer,colorBuffer;
+
+
     private final String vertexShaderCode =
             "attribute vec4 vPosition;" +
                     "uniform mat4 vMatrix;" +
+                    "varying vec4 vColor;" +
+                    "attribute vec4 aColor;" +
                     "void main() {" +
                     "  gl_Position = vMatrix*vPosition;" +
+                    "  vColor = aColor;" +
                     "}";
 
     private final String fragmentShaderCode =
             "precision mediump float;" +
-                    "uniform vec4 vColor;" +
+                    "varying vec4 vColor;" +
                     "void main() {" +
                     "  gl_FragColor = vColor;" +
                     "}";
@@ -120,7 +133,11 @@ public class MyStraightTriangleActivity extends AppCompatActivity {
     private final int vertexStride = COORDS_PER_VERTEX * 4; // 每个顶点四个字节
 
     //设置颜色，依次为红绿蓝和透明通道
-    float color[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float color[] = {
+            0.0f, 1.0f, 0.0f, 1.0f,
+            1.0f, 0.0f, 0.0f, 1.0f,
+            0.0f, 0.0f, 1.0f, 1.0f
+    };
 
 
     private float[] mViewMatrix = new float[16];
@@ -157,6 +174,7 @@ public class MyStraightTriangleActivity extends AppCompatActivity {
         @Override
         public void onDrawFrame(GL10 gl10) {
 
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT| GLES20.GL_DEPTH_BUFFER_BIT);
             //将程序加入到OpenGLES2.0环境
             GLES20.glUseProgram(mProgram);
             //获取变换矩阵vMatrix成员句柄
@@ -172,9 +190,12 @@ public class MyStraightTriangleActivity extends AppCompatActivity {
                     GLES20.GL_FLOAT, false,
                     vertexStride, vertexBuffer);
             //获取片元着色器的vColor成员的句柄
-            mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor");
+            mColorHandle = GLES20.glGetAttribLocation(mProgram, "aColor");
             //设置绘制三角形的颜色
-            GLES20.glUniform4fv(mColorHandle, 1, color, 0);
+            GLES20.glEnableVertexAttribArray(mColorHandle);
+            GLES20.glVertexAttribPointer(mColorHandle,4,
+                    GLES20.GL_FLOAT,false,
+                    0,colorBuffer);
             //绘制三角形
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount);
             //禁止顶点数组的句柄
